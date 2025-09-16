@@ -149,3 +149,4 @@ const ImageModal = ({ isOpen, onClose, images, currentIndex, onNext, onPrev }: I
 };
 
 export default ImageModal;
+

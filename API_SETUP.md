@@ -65,3 +65,4 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 3. As imagens e depoimentos serão carregados automaticamente
 4. Clique nas imagens para abrir o modal
 5. Teste o formulário de contato
+

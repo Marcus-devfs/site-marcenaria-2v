@@ -19,9 +19,12 @@ export interface Image {
   _id: string;
   url: string;
   section: string;
+  key: string;
   category: string;
   title?: string;
   description?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Testimonial {

@@ -92,3 +92,4 @@ export const SkeletonHero = () => (
 );
 
 export default Skeleton;
+

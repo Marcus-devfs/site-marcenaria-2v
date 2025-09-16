@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiUpload, 
-  FiImage, 
-  FiTrash2, 
-  FiEdit, 
+import {
+  FiUpload,
+  FiImage,
+  FiTrash2,
+  FiEdit,
   FiEye,
   FiPlus,
   FiSearch,
-  FiFilter
+  FiFilter,
+  FiX
 } from 'react-icons/fi';
 import { apiService } from '@/lib/api';
 import { Image } from '@/types';
@@ -48,7 +49,7 @@ export default function AdminGallery() {
     }
 
     try {
-      // Implementar delete na API
+      await apiService.deleteImage(imageId);
       toast.success('Imagem excluída com sucesso!');
       fetchImages();
     } catch (error) {
@@ -57,9 +58,24 @@ export default function AdminGallery() {
     }
   };
 
-  const handleUploadImage = async (formData: FormData) => {
+  const handleUploadImage = async (uploadData: {
+    file: File;
+    title: string;
+    description: string;
+    category: string;
+    section: string;
+  }) => {
     try {
-      // Implementar upload na API
+      const formData = new FormData();
+      formData.append('file', uploadData.file);
+
+      // Usar valores padrão para os parâmetros da API
+      const categoryId = '1'; // ID da categoria (pode ser configurável)
+      const namePerfil = 'admin'; // Nome do perfil
+      const level = '1'; // Nível
+      const section = uploadData.section || 'Galeria';
+
+      await apiService.uploadImage(formData, categoryId, namePerfil, level, section);
       toast.success('Imagem enviada com sucesso!');
       setShowUploadModal(false);
       fetchImages();
@@ -71,12 +87,12 @@ export default function AdminGallery() {
 
   const categories = Array.from(new Set(images.map(img => img.category))).filter(Boolean);
   const filteredImages = images.filter(img => {
-    const matchesSearch = img.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         img.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = searchTerm ? img.title?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
     const matchesCategory = !selectedCategory || img.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
+  console.log('images', images);
   if (loading) {
     return (
       <div className="space-y-6">
@@ -183,7 +199,7 @@ export default function AdminGallery() {
             </div>
             <div className="p-4">
               <h3 className="font-semibold text-gray-900 mb-1">
-                {image.title || 'Sem título'}
+                {decodeURIComponent(image?.key?.split('-').pop() || '') || 'Sem título'}
               </h3>
               {image.description && (
                 <p className="text-sm text-gray-600 line-clamp-2">
@@ -191,8 +207,8 @@ export default function AdminGallery() {
                 </p>
               )}
               <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                <span>{image.section}</span>
-                <span>{new Date(image.createdAt || Date.now()).toLocaleDateString('pt-BR')}</span>
+                <span>{image.category}</span>
+                <span>{new Date((image as any).createdAt || Date.now()).toLocaleDateString('pt-BR')}</span>
               </div>
             </div>
           </motion.div>
@@ -206,7 +222,7 @@ export default function AdminGallery() {
             {searchTerm || selectedCategory ? 'Nenhuma imagem encontrada' : 'Nenhuma imagem cadastrada'}
           </h3>
           <p className="text-gray-500 mb-4">
-            {searchTerm || selectedCategory 
+            {searchTerm || selectedCategory
               ? 'Tente ajustar os filtros de busca'
               : 'Comece enviando sua primeira imagem'
             }
@@ -242,7 +258,16 @@ export default function AdminGallery() {
 }
 
 // Componente do Modal de Upload
-function UploadModal({ onClose, onUpload }: { onClose: () => void; onUpload: (formData: FormData) => void }) {
+function UploadModal({ onClose, onUpload }: {
+  onClose: () => void;
+  onUpload: (data: {
+    file: File;
+    title: string;
+    description: string;
+    category: string;
+    section: string;
+  }) => void;
+}) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -259,20 +284,26 @@ function UploadModal({ onClose, onUpload }: { onClose: () => void; onUpload: (fo
       return;
     }
 
-    setIsUploading(true);
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', selectedFile);
-    uploadFormData.append('title', formData.title);
-    uploadFormData.append('description', formData.description);
-    uploadFormData.append('category', formData.category);
-    uploadFormData.append('section', formData.section);
+    if (!formData.category) {
+      toast.error('Selecione uma categoria');
+      return;
+    }
 
-    await onUpload(uploadFormData);
+    setIsUploading(true);
+
+    await onUpload({
+      file: selectedFile,
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      section: formData.section
+    });
+
     setIsUploading(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Enviar Imagem</h3>
@@ -362,7 +393,7 @@ function UploadModal({ onClose, onUpload }: { onClose: () => void; onUpload: (fo
 // Componente do Modal de Preview
 function ImagePreviewModal({ image, onClose }: { image: Image; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 bg-opacity-75 flex items-center justify-center z-50">
       <div className="max-w-4xl max-h-[90vh] w-full mx-4">
         <div className="bg-white rounded-lg overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex justify-between items-center">

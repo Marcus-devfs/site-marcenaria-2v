@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   FiSettings, 
@@ -17,55 +17,39 @@ import {
 } from 'react-icons/fi';
 import Link from 'next/link';
 import { Toaster } from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const router = useRouter();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const pathname = usePathname();
 
-  useEffect(() => {
-    // Verificar autenticação
-    const token = localStorage.getItem('admin_token');
-    const userData = localStorage.getItem('admin_user');
-    
-    if (!token) {
-      router.push('/admin/login');
-      return;
-    }
-    
-    setIsAuthenticated(true);
-    
-    // Carregar dados do usuário
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser({
-          name: parsedUser.name || 'Administrador',
-          email: parsedUser.email || 'admin@mfplanejados.com',
-          role: 'Admin'
-        });
-      } catch (error) {
-        console.error('Erro ao carregar dados do usuário:', error);
-        setUser({
-          name: 'Administrador',
-          email: 'admin@mfplanejados.com',
-          role: 'Admin'
-        });
-      }
-    }
-  }, [router]);
+  console.log('Admin Layout: isLoading:', isLoading, 'isAuthenticated:', isAuthenticated);
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    router.push('/admin/login');
-  };
+  // Mostrar loading enquanto verifica autenticação
+  if (isLoading) {
+    console.log('Admin Layout: Showing loading screen');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não estiver autenticado, o contexto já redirecionará
+  if (!isAuthenticated) {
+    console.log('Admin Layout: Not authenticated, returning null');
+    return null;
+  }
+
+  console.log('Admin Layout: Rendering admin layout');
 
   const menuItems = [
     {
@@ -112,17 +96,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   ];
 
-  // Mostrar loading enquanto verifica autenticação
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -192,7 +165,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* Logout Button */}
         <div className="px-4 py-4 border-t border-gray-200">
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <FiLogOut className="w-5 h-5" />

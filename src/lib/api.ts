@@ -12,6 +12,20 @@ const api = axios.create({
   },
 });
 
+// Interceptor para adicionar token automaticamente
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Interceptor para tratamento de erros
 api.interceptors.response.use(
   (response) => response,
@@ -22,9 +36,42 @@ api.interceptors.response.use(
 );
 
 export const apiService = {
-  // Imagens - usando endpoint /filesweb
+  // Método para configurar token manualmente (se necessário)
+  setAuthToken: (token: string) => {
+    api.defaults.headers.Authorization = `Bearer ${token}`;
+  },
+
+  // Método para remover token
+  removeAuthToken: () => {
+    delete api.defaults.headers.Authorization;
+  },
+  login: async (data: any): Promise<any> => {
+    const response = await api.post('/user/login', data);
+    return response.data;
+  },
+
+  // Imagens - usando endpoint /files
   getImages: async (): Promise<Image[]> => {
     const response = await api.get('/filesweb/all');
+    return response.data;
+  },
+
+  getImagesBySection: async (section: string): Promise<Image[]> => {
+    const response = await api.get(`/file/section?section=${section}`);
+    return response.data;
+  },
+
+  uploadImage: async (formData: FormData, categoryId: string, namePerfil: string, level: string, section: string): Promise<any> => {
+    const response = await api.post(`/upload/${categoryId}/${namePerfil}/${level}/${section}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  deleteImage: async (fileId: string): Promise<any> => {
+    const response = await api.delete(`/upload/${fileId}`);
     return response.data;
   },
   // Produtos

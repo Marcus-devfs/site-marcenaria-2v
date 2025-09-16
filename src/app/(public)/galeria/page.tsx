@@ -20,7 +20,7 @@ export default function GalleryPage() {
     const fetchImages = async () => {
       try {
         const allImages = await apiService.getImages();
-        setImages(allImages);
+        setImages(Array.isArray(allImages) ? allImages : []);
       } catch (error) {
         console.error('Erro ao carregar imagens:', error);
         // Fallback data para demonstração
@@ -294,3 +294,4 @@ export default function GalleryPage() {
     </div>
   );
 }
+
