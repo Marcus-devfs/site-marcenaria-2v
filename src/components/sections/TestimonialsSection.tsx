@@ -1,46 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiStar, FiUsers, FiAward, FiCheckCircle, FiArrowLeft, FiArrowRight } from 'react-icons/fi';
+import { apiService } from '@/lib/api';
+import { Testimonial } from '@/types';
+import { SkeletonTestimonial } from '@/components/ui/Skeleton';
 
 const TestimonialsSection = () => {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
-  const testimonials = [
-    {
-      _id: '1',
-      clientName: 'Maria Silva',
-      message: 'Excelente trabalho! Os móveis ficaram exatamente como eu imaginava. Qualidade impecável e atendimento de primeira. Recomendo de olhos fechados!',
-      rating: 5,
-      project: 'Cozinha Planejada',
-      createdAt: '2024-01-15'
-    },
-    {
-      _id: '2',
-      clientName: 'João Santos',
-      message: 'Profissionais muito competentes. Entregaram no prazo e com qualidade superior. O projeto ficou ainda melhor que o esperado. Parabéns!',
-      rating: 5,
-      project: 'Quarto Completo',
-      createdAt: '2024-01-10'
-    },
-    {
-      _id: '3',
-      clientName: 'Ana Costa',
-      message: 'Transformaram completamente meu ambiente. Design moderno e funcional. Muito satisfeita com o resultado final e o atendimento!',
-      rating: 5,
-      project: 'Sala de Estar',
-      createdAt: '2024-01-05'
-    },
-    {
-      _id: '4',
-      clientName: 'Carlos Oliveira',
-      message: 'Atendimento excepcional desde o primeiro contato. O projeto foi entregue no prazo e com qualidade impecável. Super recomendo!',
-      rating: 5,
-      project: 'Escritório',
-      createdAt: '2024-01-01'
-    }
-  ];
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        setLoading(true);
+        const fetchedTestimonials = await apiService.getTestimonials();
+        setTestimonials(fetchedTestimonials);
+      } catch (error) {
+        console.error('Erro ao carregar depoimentos:', error);
+        // Fallback para depoimentos de exemplo
+        setTestimonials([
+          {
+            _id: '1',
+            clientName: 'Maria Silva',
+            message: 'Excelente trabalho! Os móveis ficaram exatamente como eu imaginava. Qualidade impecável e atendimento de primeira. Recomendo de olhos fechados!',
+            rating: 5,
+            project: 'Cozinha Planejada',
+            createdAt: '2024-01-15'
+          },
+          {
+            _id: '2',
+            clientName: 'João Santos',
+            message: 'Profissionais muito competentes. Entregaram no prazo e com qualidade superior. O projeto ficou ainda melhor que o esperado. Parabéns!',
+            rating: 5,
+            project: 'Quarto Completo',
+            createdAt: '2024-01-10'
+          },
+          {
+            _id: '3',
+            clientName: 'Ana Costa',
+            message: 'Transformaram completamente meu ambiente. Design moderno e funcional. Muito satisfeita com o resultado final e o atendimento!',
+            rating: 5,
+            project: 'Sala de Estar',
+            createdAt: '2024-01-05'
+          },
+          {
+            _id: '4',
+            clientName: 'Carlos Oliveira',
+            message: 'Atendimento excepcional desde o primeiro contato. O projeto foi entregue no prazo e com qualidade impecável. Super recomendo!',
+            rating: 5,
+            project: 'Escritório',
+            createdAt: '2024-01-01'
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTestimonials();
+  }, []);
 
   const nextTestimonial = () => {
     setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -130,45 +151,49 @@ const TestimonialsSection = () => {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="card p-8 text-center min-h-[400px] flex flex-col justify-center">
-              <motion.div
-                key={currentTestimonial}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex-1 flex flex-col justify-center"
-              >
-                {/* Stars */}
-                <div className="flex justify-center mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <FiStar
-                      key={i}
-                      className="w-5 h-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
+            {loading ? (
+              <SkeletonTestimonial />
+            ) : (
+              <div className="card p-8 text-center min-h-[400px] flex flex-col justify-center">
+                <motion.div
+                  key={currentTestimonial}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="flex-1 flex flex-col justify-center"
+                >
+                  {/* Stars */}
+                  <div className="flex justify-center mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <FiStar
+                        key={i}
+                        className="w-5 h-5 text-yellow-400 fill-current"
+                      />
+                    ))}
+                  </div>
 
-                {/* Quote */}
-                <div className="text-6xl text-primary-500 mb-4">"</div>
-                
-                <p className="text-lg text-secondary-600 mb-6 leading-relaxed">
-                  "{testimonials[currentTestimonial]?.message}"
-                </p>
-                
-                <div className="flex items-center justify-center gap-2">
-                  <FiCheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="font-semibold text-secondary-800">
-                    {testimonials[currentTestimonial]?.clientName}
-                  </span>
-                </div>
-                
-                {testimonials[currentTestimonial]?.project && (
-                  <p className="text-sm text-secondary-500 mt-2">
-                    Projeto: {testimonials[currentTestimonial]?.project}
+                  {/* Quote */}
+                  <div className="text-6xl text-primary-500 mb-4">"</div>
+                  
+                  <p className="text-lg text-secondary-600 mb-6 leading-relaxed">
+                    "{testimonials[currentTestimonial]?.message}"
                   </p>
-                )}
-              </motion.div>
-            </div>
+                  
+                  <div className="flex items-center justify-center gap-2">
+                    <FiCheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="font-semibold text-secondary-800">
+                      {testimonials[currentTestimonial]?.clientName}
+                    </span>
+                  </div>
+                  
+                  {testimonials[currentTestimonial]?.project && (
+                    <p className="text-sm text-secondary-500 mt-2">
+                      Projeto: {testimonials[currentTestimonial]?.project}
+                    </p>
+                  )}
+                </motion.div>
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex justify-center gap-4 mt-8">

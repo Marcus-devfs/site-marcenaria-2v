@@ -465,7 +465,7 @@ export default function QuotePage() {
                       type="button"
                       onClick={nextStep}
                       disabled={currentStep === 1 && !calculatorData.environment}
-                      className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       Próximo
                       <FiArrowRight className="w-5 h-5 ml-2" />

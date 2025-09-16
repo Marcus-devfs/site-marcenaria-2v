@@ -6,17 +6,20 @@ import { FiFilter, FiGrid, FiList, FiEye, FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 import { apiService } from '@/lib/api';
 import { Image } from '@/types';
+import ImageModal from '@/components/ui/ImageModal';
 
 export default function GalleryPage() {
   const [images, setImages] = useState<Image[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const allImages = await apiService.getImagesBySection('Galeria');
+        const allImages = await apiService.getImages();
         setImages(allImages);
       } catch (error) {
         console.error('Erro ao carregar imagens:', error);
@@ -83,6 +86,23 @@ export default function GalleryPage() {
   const filteredImages = selectedCategory 
     ? images.filter(img => img.category === selectedCategory)
     : images;
+
+  const openModal = (index: number) => {
+    setCurrentImageIndex(index);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % filteredImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + filteredImages.length) % filteredImages.length);
+  };
 
   if (isLoading) {
     return (
@@ -217,6 +237,7 @@ export default function GalleryPage() {
                   className={`card group cursor-pointer ${
                     viewMode === 'list' ? 'flex flex-row' : ''
                   }`}
+                  onClick={() => openModal(index)}
                 >
                   <div className={`relative bg-cover bg-center rounded-t-xl overflow-hidden ${
                     viewMode === 'list' ? 'w-48 h-32' : 'h-64'
@@ -260,6 +281,16 @@ export default function GalleryPage() {
           )}
         </div>
       </section>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        images={filteredImages}
+        currentIndex={currentImageIndex}
+        onNext={nextImage}
+        onPrev={prevImage}
+      />
     </div>
   );
 }

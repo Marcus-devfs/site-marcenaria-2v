@@ -1,9 +1,17 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiArrowRight, FiStar, FiUsers, FiAward, FiClock } from 'react-icons/fi';
+import { apiService } from '@/lib/api';
+import { Image } from '@/types';
+import { SkeletonHero } from '@/components/ui/Skeleton';
 
 const HeroSection = () => {
+  const [backgroundImages, setBackgroundImages] = useState<Image[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   const stats = [
     { icon: FiUsers, value: '500+', label: 'Projetos Realizados' },
     { icon: FiAward, value: '15+', label: 'Anos de Experiência' },
@@ -11,16 +19,61 @@ const HeroSection = () => {
     { icon: FiClock, value: '24h', label: 'Resposta Rápida' },
   ];
 
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        setLoading(true);
+        const images = await apiService.getImages();
+        setBackgroundImages(images);
+      } catch (error) {
+        console.error('Erro ao carregar imagens:', error);
+        // Fallback para imagem padrão
+        setBackgroundImages([{
+          _id: 'fallback',
+          url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2016&q=80',
+          section: 'Hero',
+          category: 'Default',
+          title: 'Imagem Padrão',
+          description: 'Imagem de fallback'
+        }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, []);
+
+  // Rotação automática das imagens de fundo
+  useEffect(() => {
+    if (backgroundImages.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [backgroundImages.length]);
+
+  if (loading) {
+    return <SkeletonHero />;
+  }
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <div
-          className="w-full h-full bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2016&q=80')`,
-          }}
-        />
+        {backgroundImages.length > 0 && (
+          <motion.div
+            key={currentImageIndex}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+            className="w-full h-full bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: `url('${backgroundImages[currentImageIndex]?.url}')`,
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
       </div>
 
@@ -71,25 +124,22 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
         >
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-                className="text-center"
-              >
-                <div className="text-3xl md:text-4xl font-bold text-white mb-2 text-shadow">
-                  {stat.value}
-                </div>
-                <div className="text-gray-300 text-sm md:text-base text-shadow">
-                  {stat.label}
-                </div>
-              </motion.div>
-            );
-          })}
+          {stats.map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
+              className="text-center"
+            >
+              <div className="text-3xl md:text-4xl font-bold text-white mb-2 text-shadow">
+                {stat.value}
+              </div>
+              <div className="text-gray-300 text-sm md:text-base text-shadow">
+                {stat.label}
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
 
