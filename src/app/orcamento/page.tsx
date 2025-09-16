@@ -1,154 +1,199 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiArrowRight, FiArrowLeft, FiCheckCircle, FiHome } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiUpload, FiX, FiCheck, FiArrowLeft, FiImage } from 'react-icons/fi';
 import { TfiRuler  } from 'react-icons/tfi';
 import { PiCalculator } from "react-icons/pi";
-
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import { apiService } from '@/lib/api';
+import { Environment, ReferenceImage, PriceConfig } from '@/types';
 
 interface QuoteFormData {
-  name: string;
-  email: string;
-  phone: string;
-  project: string;
-  budget: string;
-  timeline: string;
-  message: string;
-}
-
-interface CalculatorData {
-  environment: string;
-  area: number;
-  materials: string[];
-  extras: string[];
+  client: {
+    name: string;
+    email: string;
+    phone: string;
+    preferredContact: 'email' | 'phone' | 'whatsapp';
+  };
+  projectDetails: {
+    description: string;
+    budget: string;
+    timeline: string;
+    specialRequirements: string;
+  };
 }
 
 export default function QuotePage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [calculatorData, setCalculatorData] = useState<CalculatorData>({
-    environment: '',
-    area: 0,
-    materials: [],
-    extras: []
-  });
-  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
+  const [priceConfigs, setPriceConfigs] = useState<PriceConfig[]>([]);
+  const [calculations, setCalculations] = useState<any>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    watch,
-  } = useForm<QuoteFormData>();
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<QuoteFormData>();
 
-  const environments = [
-    { id: 'cozinha', name: 'Cozinha', basePrice: 800, icon: '🍳' },
-    { id: 'quarto', name: 'Quarto', basePrice: 600, icon: '🛏️' },
-    { id: 'sala', name: 'Sala de Estar', basePrice: 700, icon: '🛋️' },
-    { id: 'banheiro', name: 'Banheiro', basePrice: 500, icon: '🚿' },
-    { id: 'escritorio', name: 'Escritório', basePrice: 650, icon: '💻' },
-    { id: 'lavanderia', name: 'Lavanderia', basePrice: 400, icon: '🧺' }
-  ];
+  useEffect(() => {
+    const fetchPriceConfigs = async () => {
+      try {
+        const configs = await apiService.getPriceConfigs();
+        setPriceConfigs(configs);
+      } catch (error) {
+        console.error('Erro ao carregar configurações de preço:', error);
+      }
+    };
 
-  const materials = [
-    { id: 'mdf', name: 'MDF', price: 1.0 },
-    { id: 'melamina', name: 'Melamina', price: 0.8 },
-    { id: 'madeira_macica', name: 'Madeira Maciça', price: 1.5 },
-    { id: 'laminado', name: 'Laminado', price: 1.2 },
-    { id: 'acrilico', name: 'Acrílico', price: 1.8 }
-  ];
+    fetchPriceConfigs();
+  }, []);
 
-  const extras = [
-    { id: 'iluminacao', name: 'Iluminação LED', price: 200 },
-    { id: 'puxadores', name: 'Puxadores Premium', price: 150 },
-    { id: 'gavetas', name: 'Sistema de Gavetas', price: 300 },
-    { id: 'portas', name: 'Portas de Vidro', price: 400 },
-    { id: 'organizadores', name: 'Organizadores', price: 250 }
-  ];
+  // Calcular preços quando ambientes mudarem
+  useEffect(() => {
+    if (environments.length > 0) {
+      calculatePrices();
+    }
+  }, [environments]);
 
-  const calculatePrice = () => {
-    const selectedEnv = environments.find(env => env.id === calculatorData.environment);
-    if (!selectedEnv) return 0;
+  const addEnvironment = () => {
+    const newEnvironment: Environment = {
+      type: 'cozinha',
+      measurements: {
+        width: 0,
+        height: 0,
+        depth: 0,
+        area: 0
+      },
+      description: '',
+      woodType: 'branca',
+      thickness: '18mm'
+    };
+    setEnvironments([...environments, newEnvironment]);
+  };
 
-    let basePrice = selectedEnv.basePrice * calculatorData.area;
-    
-    // Apply material multiplier
-    const selectedMaterials = materials.filter(mat => calculatorData.materials.includes(mat.id));
-    if (selectedMaterials.length > 0) {
-      const avgMaterialPrice = selectedMaterials.reduce((sum, mat) => sum + mat.price, 0) / selectedMaterials.length;
-      basePrice *= avgMaterialPrice;
+  const removeEnvironment = (index: number) => {
+    setEnvironments(environments.filter((_, i) => i !== index));
+  };
+
+  const updateEnvironment = (index: number, field: string, value: any) => {
+    const updated = [...environments];
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      updated[index][parent as keyof Environment][child as string] = value;
+    } else {
+      updated[index][field as keyof Environment] = value;
     }
 
-    // Add extras
-    const selectedExtras = extras.filter(extra => calculatorData.extras.includes(extra.id));
-    const extrasPrice = selectedExtras.reduce((sum, extra) => sum + extra.price, 0);
+    // Calcular área automaticamente
+    if (field === 'measurements.width' || field === 'measurements.height') {
+      const width = field === 'measurements.width' ? value : updated[index].measurements.width;
+      const height = field === 'measurements.height' ? value : updated[index].measurements.height;
+      updated[index].measurements.area = width * height;
+    }
 
-    return Math.round(basePrice + extrasPrice);
+    setEnvironments(updated);
   };
 
-  const handleEnvironmentSelect = (envId: string) => {
-    setCalculatorData(prev => ({ ...prev, environment: envId }));
+  const calculatePrices = async () => {
+    if (environments.length === 0) return;
+
+    setIsCalculating(true);
+    try {
+      const result = await apiService.calculateEstimatedPrice(environments);
+      setCalculations(result.data);
+    } catch (error) {
+      console.error('Erro ao calcular preços:', error);
+      toast.error('Erro ao calcular preços estimados');
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
-  const handleMaterialToggle = (materialId: string) => {
-    setCalculatorData(prev => ({
-      ...prev,
-      materials: prev.materials.includes(materialId)
-        ? prev.materials.filter(id => id !== materialId)
-        : [...prev.materials, materialId]
-    }));
+  const handleImageUpload = async (files: FileList) => {
+    if (files.length === 0) return;
+
+    setUploadingImages(true);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append('images', file);
+      });
+
+      const result = await apiService.uploadReferenceImages(formData);
+      setReferenceImages([...referenceImages, ...result.images]);
+      toast.success('Imagens enviadas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      toast.error('Erro ao fazer upload das imagens');
+    } finally {
+      setUploadingImages(false);
+    }
   };
 
-  const handleExtraToggle = (extraId: string) => {
-    setCalculatorData(prev => ({
-      ...prev,
-      extras: prev.extras.includes(extraId)
-        ? prev.extras.filter(id => id !== extraId)
-        : [...prev.extras, extraId]
-    }));
-  };
-
-  const nextStep = () => {
-    if (currentStep < 4) setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  const removeReferenceImage = (index: number) => {
+    setReferenceImages(referenceImages.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (data: QuoteFormData) => {
+    if (environments.length === 0) {
+      toast.error('Adicione pelo menos um ambiente');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const quoteData = {
+        ...data,
+        environments,
+        referenceImages,
+        calculations
+      };
+
+      await apiService.createQuoteComplete(quoteData);
       toast.success('Orçamento enviado com sucesso! Entraremos em contato em breve.');
-      reset();
-      setCurrentStep(1);
-      setCalculatorData({
-        environment: '',
-        area: 0,
-        materials: [],
-        extras: []
-      });
+      
+      // Reset form
+      setEnvironments([]);
+      setReferenceImages([]);
+      setCalculations(null);
     } catch (error) {
+      console.error('Erro ao enviar orçamento:', error);
       toast.error('Erro ao enviar orçamento. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const steps = [
-    { number: 1, title: 'Ambiente', icon: FiHome },
-    { number: 2, title: 'Materiais', icon: TfiRuler },
-    { number: 3, title: 'Extras', icon: FiCheckCircle },
-    { number: 4, title: 'Contato', icon: PiCalculator },
+  const environmentOptions = [
+    { value: 'cozinha', label: 'Cozinha' },
+    { value: 'quarto', label: 'Quarto' },
+    { value: 'sala', label: 'Sala' },
+    { value: 'banheiro', label: 'Banheiro' },
+    { value: 'escritorio', label: 'Escritório' },
+    { value: 'area_externa', label: 'Área Externa' },
+    { value: 'outro', label: 'Outro' }
+  ];
+
+  const woodTypeOptions = [
+    { value: 'branca', label: 'Madeira Branca' },
+    { value: 'madeirada', label: 'Madeira Madeirada' },
+    { value: 'laminada', label: 'Laminada' },
+    { value: 'mdf', label: 'MDF' },
+    { value: 'outro', label: 'Outro' }
+  ];
+
+  const thicknessOptions = [
+    { value: '15mm', label: '15mm' },
+    { value: '18mm', label: '18mm' },
+    { value: '25mm', label: '25mm' }
   ];
 
   return (
     <div className="pt-32 pb-16">
       {/* Hero Section */}
-      <section className="py-16 gradient-bg">
+      <section className="py-16 bg-gradient-to-br from-primary-50 to-primary-100">
         <div className="container-custom">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -165,326 +210,461 @@ export default function QuotePage() {
             </Link>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-secondary-800 mb-6">
-              Calculadora de <span className="text-gradient">Orçamento</span>
+              Solicite seu <span className="text-gradient">Orçamento</span>
             </h1>
             <p className="text-xl text-secondary-600 max-w-3xl mx-auto">
-              Receba uma estimativa personalizada para seu projeto de móveis planejados. 
-              Simples, rápido e sem compromisso.
+              Preencha os dados abaixo e receba um orçamento personalizado e detalhado 
+              para seu projeto de móveis planejados.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Progress Steps */}
-      <section className="py-8 bg-white border-b border-gray-200">
-        <div className="container-custom">
-          <div className="flex justify-center">
-            <div className="flex items-center space-x-8">
-              {steps.map((step, index) => {
-                const Icon = step.icon;
-                const isActive = currentStep >= step.number;
-                const isCompleted = currentStep > step.number;
-                
-                return (
-                  <div key={step.number} className="flex items-center">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        isCompleted
-                          ? 'bg-green-500 text-white'
-                          : isActive
-                          ? 'bg-primary-500 text-white'
-                          : 'bg-gray-200 text-gray-500'
-                      }`}>
-                        {isCompleted ? (
-                          <FiCheckCircle className="w-6 h-6" />
-                        ) : (
-                          <Icon className="w-6 h-6" />
-                        )}
-                      </div>
-                      <span className={`text-sm font-medium mt-2 ${
-                        isActive ? 'text-primary-500' : 'text-gray-500'
-                      }`}>
-                        {step.title}
-                      </span>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className={`w-16 h-1 mx-4 transition-all duration-300 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Calculator Form */}
+      {/* Form Section */}
       <section className="py-16">
-        <div className="container-custom max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            <div className="card p-8 lg:p-12">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                
-                {/* Step 1: Environment Selection */}
-                {currentStep === 1 && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="space-y-6"
-                  >
-                    <h2 className="text-2xl font-bold text-secondary-800 mb-6">
-                      Qual ambiente você quer planejar?
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {environments.map((env) => (
-                        <button
-                          key={env.id}
-                          type="button"
-                          onClick={() => handleEnvironmentSelect(env.id)}
-                          className={`p-6 border-2 rounded-xl text-center transition-all duration-300 ${
-                            calculatorData.environment === env.id
-                              ? 'border-primary-500 bg-primary-50'
-                              : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
-                          }`}
-                        >
-                          <div className="text-4xl mb-3">{env.icon}</div>
-                          <h3 className="font-semibold text-secondary-800 mb-2">{env.name}</h3>
-                          <p className="text-sm text-secondary-600">
-                            A partir de R$ {env.basePrice}/m²
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-
-                    {calculatorData.environment && (
-                      <div className="mt-6">
-                        <label className="block text-sm font-medium text-secondary-700 mb-2">
-                          Área aproximada (m²)
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={calculatorData.area}
-                          onChange={(e) => setCalculatorData(prev => ({ ...prev, area: Number(e.target.value) }))}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300"
-                          placeholder="Ex: 12"
-                        />
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Step 2: Materials */}
-                {currentStep === 2 && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="space-y-6"
-                  >
-                    <h2 className="text-2xl font-bold text-secondary-800 mb-6">
-                      Escolha os materiais
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {materials.map((material) => (
-                        <button
-                          key={material.id}
-                          type="button"
-                          onClick={() => handleMaterialToggle(material.id)}
-                          className={`p-4 border-2 rounded-lg text-left transition-all duration-300 ${
-                            calculatorData.materials.includes(material.id)
-                              ? 'border-primary-500 bg-primary-50'
-                              : 'border-gray-200 hover:border-primary-300'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-secondary-800">{material.name}</span>
-                            <span className="text-sm text-secondary-600">
-                              {material.price === 1.0 ? 'Padrão' : `${(material.price * 100).toFixed(0)}%`}
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 3: Extras */}
-                {currentStep === 3 && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="space-y-6"
-                  >
-                    <h2 className="text-2xl font-bold text-secondary-800 mb-6">
-                      Adicione extras (opcional)
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {extras.map((extra) => (
-                        <button
-                          key={extra.id}
-                          type="button"
-                          onClick={() => handleExtraToggle(extra.id)}
-                          className={`p-4 border-2 rounded-lg text-left transition-all duration-300 ${
-                            calculatorData.extras.includes(extra.id)
-                              ? 'border-primary-500 bg-primary-50'
-                              : 'border-gray-200 hover:border-primary-300'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-secondary-800">{extra.name}</span>
-                            <span className="text-sm text-primary-600 font-semibold">
-                              +R$ {extra.price}
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Price Estimate */}
-                    {calculatorData.environment && calculatorData.area > 0 && (
-                      <div className="mt-8 p-6 bg-primary-50 rounded-xl">
-                        <h3 className="text-lg font-semibold text-secondary-800 mb-2">
-                          Estimativa do Projeto
-                        </h3>
-                        <div className="text-3xl font-bold text-primary-500">
-                          R$ {calculatePrice().toLocaleString('pt-BR')}
-                        </div>
-                        <p className="text-sm text-secondary-600 mt-2">
-                          *Valor estimado baseado nas suas escolhas. Orçamento final pode variar.
-                        </p>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Step 4: Contact Information */}
-                {currentStep === 4 && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="space-y-6"
-                  >
-                    <h2 className="text-2xl font-bold text-secondary-800 mb-6">
-                      Seus dados para contato
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-secondary-700 mb-2">
-                          Nome Completo *
-                        </label>
-                        <input
-                          type="text"
-                          {...register('name', { required: 'Nome é obrigatório' })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300"
-                          placeholder="João Silva"
-                        />
-                        {errors.name && (
-                          <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-secondary-700 mb-2">
-                          E-mail *
-                        </label>
-                        <input
-                          type="email"
-                          {...register('email', { 
-                            required: 'E-mail é obrigatório',
-                            pattern: {
-                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: 'E-mail inválido'
-                            }
-                          })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300"
-                          placeholder="joão@email.com"
-                        />
-                        {errors.email && (
-                          <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-secondary-700 mb-2">
-                        Telefone *
-                      </label>
-                      <input
-                        type="tel"
-                        {...register('phone', { required: 'Telefone é obrigatório' })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300"
-                        placeholder="(11) 99999-9999"
-                      />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-secondary-700 mb-2">
-                        Observações adicionais
-                      </label>
-                      <textarea
-                        {...register('message')}
-                        rows={4}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 resize-none"
-                        placeholder="Conte-nos mais sobre seu projeto, preferências de estilo, cores, etc..."
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Navigation Buttons */}
-                <div className="flex justify-between pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    disabled={currentStep === 1}
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Anterior
-                  </button>
-                  
-                  {currentStep < 4 ? (
-                    <button
-                      type="button"
-                      onClick={nextStep}
-                      disabled={currentStep === 1 && !calculatorData.environment}
-                      className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      Próximo
-                      <FiArrowRight className="w-5 h-5 ml-2" />
-                    </button>
-                  ) : (
-                    <motion.button
-                      type="submit"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="btn-primary"
-                    >
-                      Enviar Orçamento
-                      <FiArrowRight className="w-5 h-5 ml-2" />
-                    </motion.button>
+        <div className="container-custom">
+          <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl mx-auto">
+            {/* Dados do Cliente */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="card p-8 mb-8"
+            >
+              <h2 className="text-2xl font-bold text-secondary-800 mb-6 flex items-center gap-2">
+                <FiCheck className="w-6 h-6 text-primary-500" />
+                Dados do Cliente
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Nome Completo *
+                  </label>
+                  <input
+                    {...register('client.name', { required: 'Nome é obrigatório' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Seu nome completo"
+                  />
+                  {errors.client?.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.client.name.message}</p>
                   )}
                 </div>
-              </form>
-            </div>
-          </motion.div>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    {...register('client.email', { 
+                      required: 'Email é obrigatório',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Email inválido'
+                      }
+                    })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="seu@email.com"
+                  />
+                  {errors.client?.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.client.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Telefone/WhatsApp *
+                  </label>
+                  <input
+                    {...register('client.phone', { required: 'Telefone é obrigatório' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="(11) 99999-9999"
+                  />
+                  {errors.client?.phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.client.phone.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Preferência de Contato
+                  </label>
+                  <select
+                    {...register('client.preferredContact')}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="phone">Telefone</option>
+                    <option value="email">Email</option>
+                  </select>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Ambientes */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="card p-8 mb-8"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-secondary-800 flex items-center gap-2">
+                  <TfiRuler className="w-6 h-6 text-primary-500" />
+                  Ambientes do Projeto
+                </h2>
+                <button
+                  type="button"
+                  onClick={addEnvironment}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  Adicionar Ambiente
+                </button>
+              </div>
+
+              {environments.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <TfiRuler className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Adicione pelo menos um ambiente para calcular o orçamento</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {environments.map((env, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-secondary-800">
+                          Ambiente {index + 1}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => removeEnvironment(index)}
+                          className="text-red-500 hover:text-red-700 p-2"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Tipo de Ambiente
+                          </label>
+                          <select
+                            value={env.type}
+                            onChange={(e) => updateEnvironment(index, 'type', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          >
+                            {environmentOptions.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Largura (m)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={env.measurements.width}
+                            onChange={(e) => updateEnvironment(index, 'measurements.width', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Altura (m)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={env.measurements.height}
+                            onChange={(e) => updateEnvironment(index, 'measurements.height', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Profundidade (m)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={env.measurements.depth}
+                            onChange={(e) => updateEnvironment(index, 'measurements.depth', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Tipo de Madeira
+                          </label>
+                          <select
+                            value={env.woodType}
+                            onChange={(e) => updateEnvironment(index, 'woodType', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          >
+                            {woodTypeOptions.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-secondary-700 mb-2">
+                            Espessura
+                          </label>
+                          <select
+                            value={env.thickness}
+                            onChange={(e) => updateEnvironment(index, 'thickness', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          >
+                            {thicknessOptions.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-secondary-700 mb-2">
+                          Descrição do Ambiente
+                        </label>
+                        <textarea
+                          value={env.description}
+                          onChange={(e) => updateEnvironment(index, 'description', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          rows={3}
+                          placeholder="Descreva o que você imagina para este ambiente..."
+                        />
+                      </div>
+
+                      {env.measurements.area > 0 && (
+                        <div className="mt-4 p-3 bg-primary-50 rounded-lg">
+                          <p className="text-sm text-primary-700">
+                            <strong>Área calculada:</strong> {env.measurements.area.toFixed(2)} m²
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Cálculo de Preços */}
+            {calculations && (
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="card p-8 mb-8 bg-gradient-to-r from-primary-50 to-primary-100"
+              >
+                <h2 className="text-2xl font-bold text-secondary-800 mb-6 flex items-center gap-2">
+                    <PiCalculator className="w-6 h-6 text-primary-500" />
+                  Estimativa de Preços
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="text-center p-4 bg-white rounded-lg">
+                    <p className="text-2xl font-bold text-primary-600">
+                      {calculations.totalArea.toFixed(2)} m²
+                    </p>
+                    <p className="text-sm text-gray-600">Área Total</p>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg">
+                    <p className="text-2xl font-bold text-primary-600">
+                      R$ {calculations.averagePricePerM2.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-600">Preço Médio/m²</p>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg">
+                    <p className="text-2xl font-bold text-primary-600">
+                      R$ {calculations.estimatedTotalValue.toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-sm text-gray-600">Valor Estimado</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-secondary-800">Detalhamento por Ambiente:</h3>
+                  {calculations.breakdown.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-white rounded-lg">
+                      <span className="font-medium capitalize">{item.environment}</span>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">{item.area.toFixed(2)} m² × R$ {item.pricePerM2.toFixed(2)}</p>
+                        <p className="font-semibold text-primary-600">R$ {item.totalValue.toLocaleString('pt-BR')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Imagens de Referência */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="card p-8 mb-8"
+            >
+              <h2 className="text-2xl font-bold text-secondary-800 mb-6 flex items-center gap-2">
+                <FiImage className="w-6 h-6 text-primary-500" />
+                Imagens de Referência (Pinterest, Instagram, etc.)
+              </h2>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                  className="hidden"
+                  id="reference-images"
+                />
+                <label
+                  htmlFor="reference-images"
+                  className="cursor-pointer flex flex-col items-center gap-4"
+                >
+                  <FiUpload className="w-12 h-12 text-gray-400" />
+                  <div>
+                    <p className="text-lg font-medium text-gray-700">
+                      {uploadingImages ? 'Enviando imagens...' : 'Clique para enviar imagens'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      PNG, JPG, GIF até 5MB cada (máximo 5 imagens)
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {referenceImages.length > 0 && (
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {referenceImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image.url}
+                        alt={`Referência ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeReferenceImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Detalhes do Projeto */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="card p-8 mb-8"
+            >
+              <h2 className="text-2xl font-bold text-secondary-800 mb-6">
+                Detalhes do Projeto
+              </h2>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Descrição do Projeto
+                  </label>
+                  <textarea
+                    {...register('projectDetails.description')}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="Conte-nos mais sobre seu projeto, suas expectativas e necessidades..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
+                      Faixa de Orçamento
+                    </label>
+                    <select
+                      {...register('projectDetails.budget')}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="nao_definido">Não definido</option>
+                      <option value="ate_10k">Até R$ 10.000</option>
+                      <option value="10k_25k">R$ 10.000 - R$ 25.000</option>
+                      <option value="25k_50k">R$ 25.000 - R$ 50.000</option>
+                      <option value="50k_100k">R$ 50.000 - R$ 100.000</option>
+                      <option value="acima_100k">Acima de R$ 100.000</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
+                      Prazo Desejado
+                    </label>
+                    <select
+                      {...register('projectDetails.timeline')}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="sem_pressa">Sem pressa</option>
+                      <option value="urgente">Urgente (até 1 mês)</option>
+                      <option value="1_mes">1 mês</option>
+                      <option value="2_3_meses">2-3 meses</option>
+                      <option value="3_6_meses">3-6 meses</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    Requisitos Especiais
+                  </label>
+                  <textarea
+                    {...register('projectDetails.specialRequirements')}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Alguma necessidade especial, acessibilidade, funcionalidades específicas..."
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Submit Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="text-center"
+            >
+              <button
+                type="submit"
+                disabled={isSubmitting || environments.length === 0}
+                className="btn-primary text-lg px-12 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Enviando...' : 'Solicitar Orçamento Completo'}
+              </button>
+              
+              <p className="text-sm text-gray-600 mt-4">
+                * Campos obrigatórios. Entraremos em contato em até 24 horas.
+              </p>
+            </motion.div>
+          </form>
         </div>
       </section>
     </div>
