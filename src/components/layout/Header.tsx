@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiMenu, FiX, FiHome, FiGrid, FiPackage, FiPhone } from 'react-icons/fi';
@@ -44,14 +45,27 @@ const Header = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="relative">
-              <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xl">MF</span>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <Image
+                  src="/favicon.png"
+                  alt="MF Planejados"
+                  width={42}
+                  height={42}
+                  className="object-cover"
+                />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary-600 rounded-full"></div>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-secondary-800">MF Planejados</h1>
-              <p className="text-xs text-secondary-600">Móveis sob medida</p>
+              <h1 className={`text-xl font-bold transition-colors duration-300 ${
+                isScrolled || !isHomePage ? 'text-secondary-800' : 'text-white'
+              }`}>
+                MF Planejados
+              </h1>
+              <p className={`text-xs transition-colors duration-300 ${
+                isScrolled || !isHomePage ? 'text-secondary-600' : 'text-white/80'
+              }`}>
+                Móveis sob medida
+              </p>
             </div>
           </Link>
 
