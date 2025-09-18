@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import { apiService } from '@/lib/api';
 import { QuoteComplete } from '@/types';
+import { Select } from '@/components/ui/Select';
 import toast from 'react-hot-toast';
 
 export default function QuoteDetailPage() {
@@ -193,21 +194,22 @@ export default function QuoteDetailPage() {
                 {getStatusLabel(quote.status || 'pending')}
               </span>
               <div className="flex items-center gap-2">
-                <select
+                <Select
+                  options={[
+                    { value: 'pending', label: 'Pendente' },
+                    { value: 'reviewed', label: 'Revisado' },
+                    { value: 'sent', label: 'Enviado' },
+                    { value: 'approved', label: 'Aprovado' },
+                    { value: 'rejected', label: 'Rejeitado' }
+                  ]}
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="pending">Pendente</option>
-                  <option value="reviewed">Revisado</option>
-                  <option value="sent">Enviado</option>
-                  <option value="approved">Aprovado</option>
-                  <option value="rejected">Rejeitado</option>
-                </select>
+                  className="px-3 py-1 text-sm"
+                />
                 <button
                   onClick={handleStatusUpdate}
                   disabled={selectedStatus === (quote.status || 'pending')}
-                  className="px-3 py-1 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
                 >
                   Atualizar
                 </button>
@@ -279,14 +281,23 @@ export default function QuoteDetailPage() {
                   <p className="text-gray-900">{getTimelineLabel(quote.projectDetails?.timeline || 'sem_pressa')}</p>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                <p className="text-gray-900">{quote.projectDetails?.description || 'Não informado'}</p>
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Descrição do Projeto</label>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-gray-900 whitespace-pre-wrap leading-relaxed text-sm">
+                    {quote.projectDetails?.description || 'Não informado'}
+                  </p>
+                </div>
               </div>
+              
               {quote.projectDetails?.specialRequirements && (
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Requisitos Especiais</label>
-                  <p className="text-gray-900">{quote.projectDetails.specialRequirements}</p>
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Requisitos Especiais</label>
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <p className="text-gray-900 whitespace-pre-wrap leading-relaxed text-sm">
+                      {quote.projectDetails.specialRequirements}
+                    </p>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -312,7 +323,7 @@ export default function QuoteDetailPage() {
                           {environment.name || environment.type}
                         </h3>
                         {environment.description && (
-                          <p className="text-sm text-gray-600">{environment.description}</p>
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{environment.description}</p>
                         )}
                       </div>
                     </div>
@@ -350,7 +361,7 @@ export default function QuoteDetailPage() {
                             {item.description && (
                               <div className="mt-3">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                                <p className="text-gray-900 text-sm">{item.description}</p>
+                                <p className="text-gray-900 text-sm whitespace-pre-wrap leading-relaxed">{item.description}</p>
                               </div>
                             )}
                           </div>

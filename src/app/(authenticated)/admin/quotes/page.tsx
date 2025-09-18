@@ -22,6 +22,7 @@ import {
 import { apiService } from '@/lib/api';
 import { QuoteComplete } from '@/types';
 import toast from 'react-hot-toast';
+import { Select } from '@/components/ui';
 
 export default function AdminQuotes() {
   const [quotes, setQuotes] = useState<QuoteComplete[]>([]);
@@ -144,7 +145,7 @@ export default function AdminQuotes() {
             </div>
           </div>
           <div className="sm:w-48">
-            <select
+            {/* <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -155,7 +156,19 @@ export default function AdminQuotes() {
               <option value="sent">Enviado</option>
               <option value="approved">Aprovado</option>
               <option value="rejected">Rejeitado</option>
-            </select>
+            </select> */}
+            <Select
+              options={[
+                { value: 'pending', label: 'Pendente' },
+                { value: 'reviewed', label: 'Revisado' },
+                { value: 'sent', label: 'Enviado' },
+                { value: 'approved', label: 'Aprovado' },
+                { value: 'rejected', label: 'Rejeitado' }
+              ]}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 text-sm"
+            />
           </div>
         </div>
       </div>
