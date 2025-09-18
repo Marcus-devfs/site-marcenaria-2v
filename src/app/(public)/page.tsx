@@ -4,6 +4,7 @@ import ProcessSection from '@/components/sections/ProcessSection';
 import WorksSection from '@/components/sections/WorksSection';
 import PartnersSection from '@/components/sections/PartnersSection';
 import TestimonialsSection from '@/components/sections/TestimonialsSection';
+import InstagramSection from '@/components/sections/InstagramSection';
 import ContactSection from '@/components/sections/ContactSection';
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
       <WorksSection />
       <PartnersSection />
       <TestimonialsSection />
+      <InstagramSection />
       <ContactSection />
     </>
   );
