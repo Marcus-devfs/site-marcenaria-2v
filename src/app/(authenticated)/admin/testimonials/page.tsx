@@ -59,7 +59,7 @@ export default function AdminTestimonials() {
     }
   };
 
-  const handleSaveTestimonial = async (testimonialData: any, image?: File) => {
+  const handleSaveTestimonial = async (testimonialData: { clientName: string; message: string; rating: number; project?: string; imageDescription?: string }, image?: File) => {
     try {
       if (editingTestimonial) {
         await apiService.updateTestimonial(editingTestimonial._id, testimonialData, image);
@@ -194,7 +194,7 @@ export default function AdminTestimonials() {
               {/* Message */}
               <div className="mb-4">
                 <p className="text-gray-700 leading-relaxed">
-                  "{testimonial.message}"
+                  &ldquo;{testimonial.message}&rdquo;
                 </p>
               </div>
 
@@ -278,7 +278,7 @@ function TestimonialFormModal({
 }: { 
   testimonial: Testimonial | null; 
   onClose: () => void; 
-  onSave: (data: any, image?: File) => void; 
+  onSave: (data: { clientName: string; message: string; rating: number; project?: string; imageDescription?: string }, image?: File) => void; 
 }) {
   const [formData, setFormData] = useState({
     clientName: testimonial?.clientName || '',

@@ -102,7 +102,17 @@ export class InstagramService {
   }
 
   // Converter dados do Instagram para formato da aplicação
-  static transformInstagramData(instagramPosts: InstagramMedia[]): any[] {
+  static transformInstagramData(instagramPosts: InstagramMedia[]): {
+    id: string;
+    image: string;
+    caption: string;
+    likes: number;
+    comments: number;
+    date: string;
+    link: string;
+    mediaType?: string;
+    thumbnail?: string;
+  }[] {
     return instagramPosts.map(post => ({
       id: post.id,
       image: post.media_url,
@@ -143,7 +153,17 @@ export const setupInstagram = async () => {
 
 // Hook personalizado para usar no React
 export const useInstagramPosts = (limit: number = 12) => {
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<{
+    id: string;
+    image: string;
+    caption: string;
+    likes: number;
+    comments: number;
+    date: string;
+    link: string;
+    mediaType?: string;
+    thumbnail?: string;
+  }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

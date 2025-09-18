@@ -185,5 +185,5 @@ export interface PriceConfig {
   createdBy?: string;
   notes?: string;
   // Método para cálculo de preço (adicionado pelo backend)
-  calculatePrice?: (area: number, variation?: string, measurements?: any) => number;
+  calculatePrice?: (area: number, variation?: string, measurements?: { width?: number; height?: number; depth?: number }) => number;
 }

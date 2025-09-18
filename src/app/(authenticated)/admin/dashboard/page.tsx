@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       ]);
 
       // Extrair dados dos orçamentos da resposta
-      const quotes = quotesResponse?.data || quotesResponse || [];
+      const quotes = Array.isArray(quotesResponse) ? quotesResponse : ((quotesResponse as any)?.data || []);
       
       console.log('Dashboard - Resposta dos orçamentos:', quotesResponse);
       console.log('Dashboard - Orçamentos extraídos:', quotes);
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
         totalTestimonials: Array.isArray(testimonials) ? testimonials.length : 0,
         totalImages: Array.isArray(images) ? images.length : 0,
         totalPriceConfigs: Array.isArray(priceConfigs) ? priceConfigs.length : 0,
-        recentQuotes: Array.isArray(quotes) ? quotes.slice(0, 5) : [],
+        recentQuotes: Array.isArray(quotes) ? (quotes as any[]).slice(0, 5) : [],
         recentTestimonials: Array.isArray(testimonials) ? testimonials.slice(0, 5) : []
       });
     } catch (error) {

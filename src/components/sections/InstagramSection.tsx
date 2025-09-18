@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiInstagram, FiHeart, FiMessageCircle, FiShare2, FiExternalLink } from 'react-icons/fi';
+import { FiInstagram, FiHeart, FiMessageCircle, FiExternalLink } from 'react-icons/fi';
 import { useInstagramPosts } from '@/lib/instagram';
 
 interface InstagramPost {
