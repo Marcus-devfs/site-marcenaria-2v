@@ -91,6 +91,54 @@ export const apiService = {
     return response.data;
   },
 
+  createTestimonial: async (data: any, image?: File): Promise<any> => {
+    const formData = new FormData();
+    
+    formData.append('clientName', data.clientName);
+    formData.append('message', data.message);
+    formData.append('rating', data.rating.toString());
+    if (data.project) formData.append('project', data.project);
+    if (data.imageDescription) formData.append('imageDescription', data.imageDescription);
+    
+    if (image) {
+      formData.append('image', image);
+    }
+    
+    const response = await api.post('/testimonial/create', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  updateTestimonial: async (id: string, data: any, image?: File): Promise<any> => {
+    const formData = new FormData();
+    
+    formData.append('clientName', data.clientName);
+    formData.append('message', data.message);
+    formData.append('rating', data.rating.toString());
+    if (data.project) formData.append('project', data.project);
+    if (data.imageDescription) formData.append('imageDescription', data.imageDescription);
+    if (data.isActive !== undefined) formData.append('isActive', data.isActive.toString());
+    
+    if (image) {
+      formData.append('image', image);
+    }
+    
+    const response = await api.patch(`/testimonial/update/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  deleteTestimonial: async (id: string): Promise<any> => {
+    const response = await api.delete(`/testimonial/delete/${id}`);
+    return response.data;
+  },
+
   // Envio de orçamento (antigo)
   sendQuote: async (data: any): Promise<any> => {
     const response = await api.post('/budget', { budget: data });

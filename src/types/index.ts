@@ -33,7 +33,14 @@ export interface Testimonial {
   message: string;
   rating: number;
   project?: string;
+  image?: {
+    url: string;
+    description?: string;
+    uploadedAt: Date;
+  };
+  isActive: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuoteRequest {
