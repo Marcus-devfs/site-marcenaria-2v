@@ -123,13 +123,23 @@ export const apiService = {
     return response.data;
   },
 
-  getPriceConfigsByEnvironment: async (environment: string): Promise<any[]> => {
-    const response = await api.get(`/price-config/environment/${environment}`);
+  getPriceConfigByName: async (name: string): Promise<any> => {
+    const response = await api.get(`/price-config/search?name=${encodeURIComponent(name)}`);
     return response.data;
   },
 
   calculateEstimatedPrice: async (environments: any[]): Promise<any> => {
     const response = await api.post('/price-config/calculate', { environments });
+    return response.data;
+  },
+
+  // Files
+  uploadFile: async (formData: FormData): Promise<any> => {
+    const response = await api.post('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

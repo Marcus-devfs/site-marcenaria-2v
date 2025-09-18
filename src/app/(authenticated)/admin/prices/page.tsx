@@ -8,7 +8,7 @@ import {
   FiTrash2, 
   FiDollarSign,
   FiSearch,
-  FiFilter
+  FiSave
 } from 'react-icons/fi';
 import { apiService } from '@/lib/api';
 import { PriceConfig } from '@/types';
@@ -20,7 +20,6 @@ export default function AdminPrices() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingPrice, setEditingPrice] = useState<PriceConfig | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [environmentFilter, setEnvironmentFilter] = useState('');
 
   useEffect(() => {
     fetchPriceConfigs();
@@ -30,8 +29,11 @@ export default function AdminPrices() {
     try {
       setLoading(true);
       const response = await apiService.getPriceConfigs();
-      const configs = Array.isArray(response) ? response : response?.data || [];
-      setPriceConfigs(configs);
+      const configs = Array.isArray(response) ? response : (response as any)?.data || [];
+      
+      // Filtrar apenas configurações válidas com nome
+      const validConfigs = configs.filter((config: any) => config && config.name);
+      setPriceConfigs(validConfigs);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
       toast.error('Erro ao carregar configurações de preço');
@@ -56,218 +58,169 @@ export default function AdminPrices() {
     }
   };
 
-  const handleSavePrice = async (priceData: any) => {
-    try {
-      if (editingPrice) {
-        await apiService.updatePriceConfig(editingPrice._id!, priceData);
-        toast.success('Configuração atualizada com sucesso!');
-      } else {
-        await apiService.createPriceConfig(priceData);
-        toast.success('Configuração criada com sucesso!');
-      }
-      setShowFormModal(false);
-      setEditingPrice(null);
-      fetchPriceConfigs();
-    } catch (error) {
-      console.error('Erro ao salvar configuração:', error);
-      toast.error('Erro ao salvar configuração');
-    }
+  const handleEditPrice = (price: PriceConfig) => {
+    setEditingPrice(price);
+    setShowFormModal(true);
   };
 
-  const environments = Array.from(new Set(priceConfigs.map(config => config.environment))).filter(Boolean);
-  const filteredConfigs = priceConfigs.filter(config => {
-    const matchesSearch = 
-      config.environment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.woodType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.thickness?.includes(searchTerm);
-    const matchesEnvironment = !environmentFilter || config.environment === environmentFilter;
-    return matchesSearch && matchesEnvironment;
-  });
+  const handleCloseModal = () => {
+    setShowFormModal(false);
+    setEditingPrice(null);
+  };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="animate-pulse">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                    <div className="h-6 bg-gray-200 rounded w-20"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const filteredConfigs = priceConfigs.filter(config =>
+    config.name && config.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configurações de Preço</h1>
-          <p className="text-gray-600">Gerencie os preços por m² para diferentes ambientes e materiais</p>
+          <h1 className="text-2xl font-bold text-gray-900">Configurações de Preços</h1>
+          <p className="text-gray-600">Gerencie os preços dos móveis por metro quadrado</p>
         </div>
         <button
           onClick={() => setShowFormModal(true)}
-          className="btn-primary flex items-center gap-2"
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
         >
           <FiPlus className="w-4 h-4" />
-          Nova Configuração
+          Adicionar Móvel
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Buscar configurações..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="sm:w-48">
-            <select
-              value={environmentFilter}
-              onChange={(e) => setEnvironmentFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="">Todos os ambientes</option>
-              {environments.map(environment => (
-                <option key={environment} value={environment}>
-                  {environment.charAt(0).toUpperCase() + environment.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Buscar por nome do móvel..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
         </div>
       </div>
 
-      {/* Price Configs Table */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Configurações ({filteredConfigs.length})
-          </h3>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ambiente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo de Madeira
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Espessura
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Preço/m²
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredConfigs.map((config, index) => (
-                <motion.tr
-                  key={config._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">
-                    {config.environment}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                    {config.woodType}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {config.thickness}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                    R$ {config.pricePerM2.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      config.isActive
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {config.isActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingPrice(config);
-                          setShowFormModal(true);
-                        }}
-                        className="text-primary-600 hover:text-primary-900 p-1 rounded hover:bg-primary-50"
-                      >
-                        <FiEdit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePrice(config._id!)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                      >
-                        <FiTrash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Carregando configurações...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nome do Móvel
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Preço Base/m²
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Variações
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Regras Especiais
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredConfigs.map((config) => (
+                  <tr key={config._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {config.name || 'Nome não definido'}
+                        </div>
+                        {config.description && (
+                          <div className="text-sm text-gray-500">
+                            {config.description}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      R$ {(config.basePricePerM2 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {config.variations?.length > 0 ? (
+                        <div className="space-y-1">
+                          {config.variations.map((variation, index) => (
+                            <div key={index} className="text-xs">
+                              {variation.name}: {variation.priceMultiplier}x
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Nenhuma</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {config.specialRules?.length > 0 ? (
+                        <div className="space-y-1">
+                          {config.specialRules.map((rule, index) => (
+                            <div key={index} className="text-xs">
+                              {rule.condition}: {rule.priceMultiplier}x
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Nenhuma</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        config.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {config.isActive ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEditPrice(config)}
+                          className="text-primary-600 hover:text-primary-900"
+                        >
+                          <FiEdit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePrice(config._id!)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {filteredConfigs.length === 0 && (
-          <div className="text-center py-12">
-            <FiDollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm || environmentFilter ? 'Nenhuma configuração encontrada' : 'Nenhuma configuração cadastrada'}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {searchTerm || environmentFilter 
-                ? 'Tente ajustar os filtros de busca'
-                : 'Comece criando sua primeira configuração de preço'
-              }
-            </p>
-            {!searchTerm && !environmentFilter && (
-              <button
-                onClick={() => setShowFormModal(true)}
-                className="btn-primary"
-              >
-                Criar Primeira Configuração
-              </button>
-            )}
+        {!loading && filteredConfigs.length === 0 && (
+          <div className="p-8 text-center text-gray-500">
+            <FiDollarSign className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p>Nenhuma configuração encontrada</p>
+            <button
+              onClick={() => setShowFormModal(true)}
+              className="mt-4 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+            >
+              Adicionar primeira configuração
+            </button>
           </div>
         )}
       </div>
@@ -276,243 +229,279 @@ export default function AdminPrices() {
       {showFormModal && (
         <PriceConfigModal
           config={editingPrice}
-          onClose={() => {
-            setShowFormModal(false);
-            setEditingPrice(null);
-          }}
-          onSave={handleSavePrice}
+          onClose={handleCloseModal}
+          onSave={fetchPriceConfigs}
         />
       )}
     </div>
   );
 }
 
-// Componente do Modal de Configuração de Preço
-function PriceConfigModal({ 
-  config, 
-  onClose, 
-  onSave 
-}: { 
-  config: PriceConfig | null; 
-  onClose: () => void; 
-  onSave: (data: any) => void; 
-}) {
+interface PriceConfigModalProps {
+  config: PriceConfig | null;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function PriceConfigModal({ config, onClose, onSave }: PriceConfigModalProps) {
   const [formData, setFormData] = useState({
-    environment: config?.environment || 'cozinha',
-    woodType: config?.woodType || 'branca',
-    thickness: config?.thickness || '18mm',
-    pricePerM2: config?.pricePerM2 || 0,
-    complexityMultipliers: {
-      basic: config?.complexityMultipliers?.basic || 1.0,
-      medium: config?.complexityMultipliers?.medium || 1.2,
-      complex: config?.complexityMultipliers?.complex || 1.5,
-    },
-    notes: config?.notes || ''
+    name: config?.name || '',
+    basePricePerM2: config?.basePricePerM2 || 0,
+    description: config?.description || '',
+    variations: config?.variations || [],
+    specialRules: config?.specialRules || [],
+    isActive: config?.isActive ?? true
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name.trim()) {
+      toast.error('Nome do móvel é obrigatório');
+      return;
+    }
+
+    if (formData.basePricePerM2 <= 0) {
+      toast.error('Preço por m² deve ser maior que zero');
+      return;
+    }
+
     setIsSubmitting(true);
-    await onSave(formData);
-    setIsSubmitting(false);
+    try {
+      if (config) {
+        await apiService.updatePriceConfig(config._id!, formData);
+        toast.success('Configuração atualizada com sucesso!');
+      } else {
+        await apiService.createPriceConfig(formData);
+        toast.success('Configuração criada com sucesso!');
+      }
+      onSave();
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      toast.error('Erro ao salvar configuração');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const environmentOptions = [
-    { value: 'cozinha', label: 'Cozinha' },
-    { value: 'quarto', label: 'Quarto' },
-    { value: 'sala', label: 'Sala' },
-    { value: 'banheiro', label: 'Banheiro' },
-    { value: 'escritorio', label: 'Escritório' },
-    { value: 'area_externa', label: 'Área Externa' },
-    { value: 'outro', label: 'Outro' }
-  ];
+  const addVariation = () => {
+    setFormData({
+      ...formData,
+      variations: [...formData.variations, { name: '', priceMultiplier: 1.0, description: '' }]
+    });
+  };
 
-  const woodTypeOptions = [
-    { value: 'branca', label: 'Madeira Branca' },
-    { value: 'madeirada', label: 'Madeira Madeirada' },
-    { value: 'laminada', label: 'Laminada' },
-    { value: 'mdf', label: 'MDF' },
-    { value: 'outro', label: 'Outro' }
-  ];
+  const removeVariation = (index: number) => {
+    setFormData({
+      ...formData,
+      variations: formData.variations.filter((_, i) => i !== index)
+    });
+  };
 
-  const thicknessOptions = [
-    { value: '15mm', label: '15mm' },
-    { value: '18mm', label: '18mm' },
-    { value: '25mm', label: '25mm' }
-  ];
+  const updateVariation = (index: number, field: string, value: any) => {
+    const updated = [...formData.variations];
+    (updated[index] as any)[field] = value;
+    setFormData({ ...formData, variations: updated });
+  };
+
+  const addSpecialRule = () => {
+    setFormData({
+      ...formData,
+      specialRules: [...formData.specialRules, { condition: '', priceMultiplier: 1.0, description: '' }]
+    });
+  };
+
+  const removeSpecialRule = (index: number) => {
+    setFormData({
+      ...formData,
+      specialRules: formData.specialRules.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateSpecialRule = (index: number, field: string, value: any) => {
+    const updated = [...formData.specialRules];
+    (updated[index] as any)[field] = value;
+    setFormData({ ...formData, specialRules: updated });
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {config ? 'Editar Configuração' : 'Nova Configuração de Preço'}
-          </h3>
+        <div className="p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            {config ? 'Editar Configuração' : 'Nova Configuração'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nome */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nome do Móvel *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Ex: GUARDA ROUPA"
+                required
+              />
+            </div>
+
+            {/* Preço Base */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preço Base por m² (R$) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.basePricePerM2}
+                onChange={(e) => setFormData({ ...formData, basePricePerM2: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="Ex: 1550"
+                required
+              />
+            </div>
+
+            {/* Descrição */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                rows={3}
+                placeholder="Descrição do móvel..."
+              />
+            </div>
+
+            {/* Variações */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Variações (ex: liso/ripado)
+                </label>
+                <button
+                  type="button"
+                  onClick={addVariation}
+                  className="text-primary-600 hover:text-primary-800 text-sm"
+                >
+                  + Adicionar Variação
+                </button>
+              </div>
+              
+              {formData.variations.map((variation, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={variation.name}
+                    onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Nome (ex: liso)"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={variation.priceMultiplier}
+                    onChange={(e) => updateVariation(index, 'priceMultiplier', parseFloat(e.target.value) || 1.0)}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="1.0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeVariation(index)}
+                    className="text-red-600 hover:text-red-800 px-2"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Regras Especiais */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Regras Especiais (ex: area &gt; 1.0)
+                </label>
+                <button
+                  type="button"
+                  onClick={addSpecialRule}
+                  className="text-primary-600 hover:text-primary-800 text-sm"
+                >
+                  + Adicionar Regra
+                </button>
+              </div>
+              
+              {formData.specialRules.map((rule, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={rule.condition}
+                    onChange={(e) => updateSpecialRule(index, 'condition', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Condição (ex: width > 1.0)"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={rule.priceMultiplier}
+                    onChange={(e) => updateSpecialRule(index, 'priceMultiplier', parseFloat(e.target.value) || 1.0)}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="1.0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSpecialRule(index)}
+                    className="text-red-600 hover:text-red-800 px-2"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Status */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                Configuração ativa
+              </label>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <FiSave className="w-4 h-4" />
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </form>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ambiente
-              </label>
-              <select
-                value={formData.environment}
-                onChange={(e) => setFormData({ ...formData, environment: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                required
-              >
-                {environmentOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Madeira
-              </label>
-              <select
-                value={formData.woodType}
-                onChange={(e) => setFormData({ ...formData, woodType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                required
-              >
-                {woodTypeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Espessura
-              </label>
-              <select
-                value={formData.thickness}
-                onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                required
-              >
-                {thicknessOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Preço por m² (R$)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.pricePerM2}
-              onChange={(e) => setFormData({ ...formData, pricePerM2: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Multiplicadores por Complexidade
-            </label>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Básico</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.complexityMultipliers.basic}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    complexityMultipliers: {
-                      ...formData.complexityMultipliers,
-                      basic: parseFloat(e.target.value) || 1.0
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Médio</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.complexityMultipliers.medium}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    complexityMultipliers: {
-                      ...formData.complexityMultipliers,
-                      medium: parseFloat(e.target.value) || 1.2
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Complexo</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={formData.complexityMultipliers.complex}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    complexityMultipliers: {
-                      ...formData.complexityMultipliers,
-                      complex: parseFloat(e.target.value) || 1.5
-                    }
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Observações
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-              rows={3}
-              placeholder="Observações sobre esta configuração..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Salvando...' : (config ? 'Atualizar' : 'Criar')}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

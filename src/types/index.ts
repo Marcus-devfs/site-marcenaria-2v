@@ -75,16 +75,21 @@ export interface Stats {
 export interface Environment {
   type: 'cozinha' | 'quarto' | 'sala' | 'banheiro' | 'escritorio' | 'area_externa' | 'outro';
   name?: string;
-  measurements: {
-    width: number;
-    height: number;
-    depth: number;
-    area: number;
+  furnitureItems: FurnitureItem[];
+  description?: string;
+}
+
+export interface FurnitureItem {
+  name: string; // nome do móvel (ex: "GUARDA ROUPA", "PAINEL DE CAMA")
+  area: number; // área em m²
+  variation?: string; // variação (ex: "liso", "ripado")
+  woodType?: string; // tipo de madeira (ex: "branca", "madeirado")
+  measurements?: {
+    width?: number;
+    height?: number;
+    depth?: number;
   };
-  description: string;
-  woodType: 'branca' | 'madeirada' | 'laminada' | 'mdf' | 'outro';
-  thickness: '15mm' | '18mm' | '25mm';
-  estimatedValue?: number;
+  description?: string;
 }
 
 export interface ReferenceImage {
@@ -130,18 +135,24 @@ export interface QuoteComplete {
 
 export interface PriceConfig {
   _id?: string;
-  environment: string;
-  woodType: string;
-  thickness: string;
-  pricePerM2: number;
-  complexityMultipliers: {
-    basic: number;
-    medium: number;
-    complex: number;
-  };
+  name: string; // nome livre do móvel
+  basePricePerM2: number;
+  variations: {
+    name: string;
+    priceMultiplier: number;
+    description?: string;
+  }[];
+  specialRules: {
+    condition: string;
+    priceMultiplier: number;
+    description?: string;
+  }[];
+  description?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
   notes?: string;
+  // Método para cálculo de preço (adicionado pelo backend)
+  calculatePrice?: (area: number, variation?: string, measurements?: any) => number;
 }
