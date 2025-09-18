@@ -412,12 +412,12 @@ export default function QuoteDetailPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Área Total</label>
-                  <p className="text-2xl font-bold text-primary-600">{quote.calculations?.totalArea || 0} m²</p>
+                  <p className="text-2xl font-bold text-primary-600">{(quote.calculations?.totalArea).toFixed(2) || 0} m²</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Preço Médio/m²</label>
                   <p className="text-2xl font-bold text-primary-600">
-                    R$ {(quote.calculations?.averagePricePerM2 || 0).toLocaleString('pt-BR')}
+                    R$ {((quote.calculations?.averagePricePerM2) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div className="border-t pt-4">

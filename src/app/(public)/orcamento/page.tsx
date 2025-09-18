@@ -181,11 +181,15 @@ export default function QuotePage() {
     setIsSubmitting(true);
     try {
       const quoteData = {
-        ...data,
+        client: data.client,
+        projectDetails: data.project, // Mapear project para projectDetails
         environments,
         referenceImages,
         calculations
       };
+
+      console.log('Dados do orçamento sendo enviados:', quoteData);
+      console.log('Dados do projeto:', data.project);
 
       await apiService.createQuoteComplete(quoteData);
       toast.success('Orçamento enviado com sucesso! Entraremos em contato em breve.');
@@ -755,11 +759,12 @@ export default function QuotePage() {
                         <Select
                           options={[
                             { value: '', label: 'Selecione uma faixa' },
-                            { value: 'ate-10k', label: 'Até R$ 10.000' },
-                            { value: '10k-25k', label: 'R$ 10.000 - R$ 25.000' },
-                            { value: '25k-50k', label: 'R$ 25.000 - R$ 50.000' },
-                            { value: '50k-100k', label: 'R$ 50.000 - R$ 100.000' },
-                            { value: 'acima-100k', label: 'Acima de R$ 100.000' }
+                            { value: 'ate_10k', label: 'Até R$ 10.000' },
+                            { value: '10k_25k', label: 'R$ 10.000 - R$ 25.000' },
+                            { value: '25k_50k', label: 'R$ 25.000 - R$ 50.000' },
+                            { value: '50k_100k', label: 'R$ 50.000 - R$ 100.000' },
+                            { value: 'acima_100k', label: 'Acima de R$ 100.000' },
+                            { value: 'nao_definido', label: 'Não definido' }
                           ]}
                           value={watch('project.budget')}
                           onChange={(e) => setValue('project.budget', e.target.value)}
@@ -776,10 +781,10 @@ export default function QuotePage() {
                           options={[
                             { value: '', label: 'Selecione um prazo' },
                             { value: 'urgente', label: 'Urgente (até 1 mês)' },
-                            { value: '1-2-meses', label: '1-2 meses' },
-                            { value: '2-3-meses', label: '2-3 meses' },
-                            { value: '3-6-meses', label: '3-6 meses' },
-                            { value: 'sem-pressa', label: 'Sem pressa' }
+                            { value: '1_mes', label: '1 mês' },
+                            { value: '2_3_meses', label: '2-3 meses' },
+                            { value: '3_6_meses', label: '3-6 meses' },
+                            { value: 'sem_pressa', label: 'Sem pressa' }
                           ]}
                           value={watch('project.timeline')}
                           onChange={(e) => setValue('project.timeline', e.target.value)}
