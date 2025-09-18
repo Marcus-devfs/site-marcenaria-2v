@@ -120,9 +120,33 @@ export interface QuoteComplete {
     averagePricePerM2: number;
     breakdown: Array<{
       environment: string;
-      area: number;
-      pricePerM2: number;
+      environmentName: string;
       totalValue: number;
+      items: Array<{
+        priceConfigId?: string;
+        name: string;
+        variation: string;
+        woodType: string;
+        area: number;
+        basePricePerM2: number;
+        totalValue: number;
+        priceConfig?: {
+          _id: string;
+          name: string;
+          basePricePerM2: number;
+          variations: Array<{
+            name: string;
+            priceMultiplier: number;
+            description?: string;
+          }>;
+          specialRules: Array<{
+            condition: string;
+            priceMultiplier: number;
+            description?: string;
+          }>;
+          description?: string;
+        };
+      }>;
     }>;
   };
   status: 'pending' | 'reviewed' | 'sent' | 'approved' | 'rejected';

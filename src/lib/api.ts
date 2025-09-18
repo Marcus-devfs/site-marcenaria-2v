@@ -108,6 +108,16 @@ export const apiService = {
     return response.data;
   },
 
+  getQuoteById: async (id: string): Promise<any> => {
+    const response = await api.get(`/quote-complete/${id}`);
+    return response.data;
+  },
+
+  updateQuoteStatus: async (id: string, status: string): Promise<any> => {
+    const response = await api.patch(`/quote-complete/${id}/status`, { status });
+    return response.data;
+  },
+
   uploadReferenceImages: async (formData: FormData): Promise<any> => {
     const response = await api.post('/quote-complete/upload-images', formData, {
       headers: {
@@ -135,7 +145,7 @@ export const apiService = {
 
   // Files
   uploadFile: async (formData: FormData): Promise<any> => {
-    const response = await api.post('/files/upload', formData, {
+    const response = await api.post('/quote-complete/upload-images', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

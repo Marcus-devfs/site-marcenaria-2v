@@ -36,12 +36,19 @@ export default function AdminDashboard() {
       setLoading(true);
       
       // Buscar dados em paralelo
-      const [quotes, testimonials, images, priceConfigs] = await Promise.all([
-        apiService.getQuoteComplete ? apiService.getQuoteComplete() : Promise.resolve([]),
+      const [quotesResponse, testimonials, images, priceConfigs] = await Promise.all([
+        apiService.getQuoteComplete(),
         apiService.getTestimonials(),
         apiService.getImages(),
         apiService.getPriceConfigs()
       ]);
+
+      // Extrair dados dos orçamentos da resposta
+      const quotes = quotesResponse?.data || quotesResponse || [];
+      
+      console.log('Dashboard - Resposta dos orçamentos:', quotesResponse);
+      console.log('Dashboard - Orçamentos extraídos:', quotes);
+      console.log('Dashboard - Total de orçamentos:', Array.isArray(quotes) ? quotes.length : 0);
 
       setStats({
         totalQuotes: Array.isArray(quotes) ? quotes.length : 0,

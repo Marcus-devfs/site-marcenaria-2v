@@ -50,7 +50,7 @@ export default function QuotePage() {
   const [showFurnitureModal, setShowFurnitureModal] = useState(false);
   const [selectedEnvironmentIndex, setSelectedEnvironmentIndex] = useState<number>(-1);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<QuoteFormData>();
+  const { register, handleSubmit, formState: { errors }, setValue, watch, trigger } = useForm<QuoteFormData>();
 
   useEffect(() => {
     const fetchPriceConfigs = async () => {
@@ -137,6 +137,14 @@ export default function QuotePage() {
         formData.append('file', file);
         
         const response = await apiService.uploadFile(formData);
+        console.log('Upload response:', response); // Debug log
+        
+        // Verificar se a resposta tem a estrutura esperada
+        if (!response.data || !response.data.url) {
+          console.error('Resposta de upload inválida:', response);
+          throw new Error('Resposta de upload inválida');
+        }
+        
         return {
           url: response.data.url,
           description: file.name,
@@ -195,7 +203,52 @@ export default function QuotePage() {
     }
   };
 
-  const nextStep = () => {
+  const validateCurrentStep = async () => {
+    switch (currentStep) {
+      case 'client':
+        // Trigger validation for all client fields
+        const isValid = await trigger(['client.name', 'client.email', 'client.phone']);
+        if (!isValid) {
+          toast.error('Por favor, preencha todos os campos obrigatórios corretamente');
+          return false;
+        }
+        return true;
+      case 'environments':
+        if (environments.length === 0) {
+          toast.error('Por favor, adicione pelo menos um ambiente');
+          return false;
+        }
+        // Verificar se todos os ambientes têm pelo menos um móvel
+        for (const env of environments) {
+          if (env.furnitureItems.length === 0) {
+            toast.error(`Por favor, adicione pelo menos um móvel ao ambiente: ${env.name}`);
+            return false;
+          }
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const isCurrentStepValid = () => {
+    switch (currentStep) {
+      case 'client':
+        const clientData = watch('client');
+        return clientData?.name && clientData?.email && clientData?.phone;
+      case 'environments':
+        return environments.length > 0 && environments.every(env => env.furnitureItems.length > 0);
+      default:
+        return true;
+    }
+  };
+
+  const nextStep = async () => {
+    const isValid = await validateCurrentStep();
+    if (!isValid) {
+      return;
+    }
+    
     const steps: Step[] = ['client', 'environments', 'review', 'submit'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
@@ -303,7 +356,9 @@ export default function QuotePage() {
                       </label>
                       <input
                         {...register('client.name', { required: 'Nome é obrigatório' })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          errors.client?.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                         placeholder="Seu nome completo"
                       />
                       {errors.client?.name && (
@@ -324,7 +379,9 @@ export default function QuotePage() {
                             message: 'Email inválido'
                           }
                         })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          errors.client?.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                         placeholder="seu@email.com"
                       />
                       {errors.client?.email && (
@@ -338,7 +395,9 @@ export default function QuotePage() {
                       </label>
                       <input
                         {...register('client.phone', { required: 'Telefone é obrigatório' })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          errors.client?.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                         placeholder="(11) 99999-9999"
                       />
                       {errors.client?.phone && (
@@ -366,7 +425,12 @@ export default function QuotePage() {
                     <button
                       type="button"
                       onClick={nextStep}
-                      className="btn-primary flex items-center gap-2"
+                      disabled={!isCurrentStepValid()}
+                      className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
+                        isCurrentStepValid()
+                          ? 'bg-primary-600 text-white hover:bg-primary-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
                       Próximo
                       <FiArrowRight className="w-4 h-4" />
