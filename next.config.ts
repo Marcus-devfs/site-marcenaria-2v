@@ -23,6 +23,18 @@ const nextConfig: NextConfig = {
         port: '3000',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.instagram.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api-mfplanejados.vercel.app',
+        port: '',
+        pathname: '/uploads/**',
+      },
     ],
   },
   async rewrites() {
@@ -34,6 +46,10 @@ const nextConfig: NextConfig = {
       {
         source: '/testimonials/:path*',
         destination: 'https://mf-planejados.s3.us-east-1.amazonaws.com/testimonials/:path*', // Proxy para o backend
+      },
+      {
+        source: '/uploads/:path*',
+        destination: 'https://api-mfplanejados.vercel.app/uploads/:path*', // Proxy para o backend
       },
     ];
   },
